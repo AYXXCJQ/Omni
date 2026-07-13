@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Node {
+  id        String   @id @default(cuid())
+  userId    String   @default("default-user")
+  parentId  String?
+  type      String   @default("general")
+  title     String   @default("")
+  content   String   @default("")
+  color     String   @default("#1890ff")
+  posX      Float    @default(0)
+  posY      Float    @default(0)
+  collapsed Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent   Node?        @relation("NodeTree", fields: [parentId], references: [id])
+  children Node[]       @relation("NodeTree")
+  todos    Todo[]
+  files    Attachment[]
+
+  @@index([userId])
+  @@index([parentId])
+}
+
+model Todo {
+  id        String   @id @default(cuid())
+  nodeId    String
+  content   String   @default("")
+  completed Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  node Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  @@index([nodeId])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  nodeId    String
+  fileName  String
+  fileSize  Int
+  mimeType  String
+  filePath  String
+  createdAt DateTime @default(now())
+
+  node Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  @@index([nodeId])
+}
