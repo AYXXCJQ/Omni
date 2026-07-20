@@ -10,9 +10,9 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File | null;
     const nodeId = formData.get("nodeId") as string | null;
 
-    if (!file || !nodeId) {
+    if (!file) {
       return Response.json(
-        { error: "file and nodeId required" },
+        { error: "file is required" },
         { status: 400 }
       );
     }
@@ -25,17 +25,27 @@ export async function POST(req: NextRequest) {
     const filePath = join(uploadDir, fileName);
     await writeFile(filePath, buffer);
 
-    const attachment = await prisma.attachment.create({
-      data: {
-        nodeId,
+    let result: Record<string, unknown>;
+    if (nodeId) {
+      result = await prisma.attachment.create({
+        data: {
+          nodeId,
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type,
+          filePath: `/uploads/${fileName}`,
+        },
+      });
+    } else {
+      result = {
+        filePath: `/uploads/${fileName}`,
         fileName: file.name,
         fileSize: file.size,
         mimeType: file.type,
-        filePath: `/uploads/${fileName}`,
-      },
-    });
+      };
+    }
 
-    return Response.json(attachment, { status: 201 });
+    return Response.json(result, { status: 201 });
   } catch (err) {
     console.error("Upload error:", err);
     return Response.json(

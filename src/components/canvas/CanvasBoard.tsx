@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useCallback, useState, useRef, Fragment } from "react";
+import { createPortal } from "react-dom";
 import CanvasViewport from "./CanvasViewport";
 import ConnectionLines from "./ConnectionLines";
 import BaseNode from "@/components/node/BaseNode";
 import NodeDetailPanel from "@/components/node/NodeDetailPanel";
 import ContextMenu from "@/components/common/ContextMenu";
+import ImportExportBar from "@/components/common/ImportExportBar";
 import { useNodeStore } from "@/store/nodeStore";
 import { useCanvasStore } from "@/store/canvasStore";
 import { buildTree, flattenTree } from "@/lib/tree-utils";
@@ -160,6 +162,12 @@ export default function CanvasBoard({ nodes: initialNodes }: { nodes: NodeData[]
     return () => window.removeEventListener("keydown", onKey);
   }, [movingNodeId, setMovingNodeId]);
 
+  // 导入完成后刷新画布
+  const handleImported = useCallback((newNodes: NodeData[]) => {
+    const tree = buildTree(newNodes);
+    setNodes(tree);
+  }, [setNodes]);
+
   const detailNode = detailNodeId ? useNodeStore.getState().nodeMap.get(detailNodeId) ?? null : null;
 
   return (
@@ -170,6 +178,7 @@ export default function CanvasBoard({ nodes: initialNodes }: { nodes: NodeData[]
           请点击目标节点 (ESC 取消)
         </div>
       )}
+      {!detailNodeId && <ImportExportBar onImported={handleImported} />}
       <CanvasViewport>
         <ConnectionLines />
         {/* 递归渲染节点树，跳过折叠节点的子节点 */}

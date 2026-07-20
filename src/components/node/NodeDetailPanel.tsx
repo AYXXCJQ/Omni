@@ -36,7 +36,7 @@ export default function NodeDetailPanel({
 }) {
   const updateNodePartial = useNodeStore((s) => s.updateNodePartial);
   const nodeIdRef = useRef(node?.id);
-  const [width, setWidth] = useState(480);
+  const [width, setWidth] = useState('50%');
 
   // 跟踪 node.id 变化，确保防抖回调使用最新 ID
   useEffect(() => {
@@ -94,7 +94,7 @@ export default function NodeDetailPanel({
       open={open}
       onClose={onClose}
       size={width}
-      resizable={{ onResize: (w) => setWidth(w) }}
+      resizable={{ onResize: (w) => setWidth(String(w)) }}
       styles={{ body: { display: "flex", flexDirection: "column", height: "100%" } }}
       extra={
         <div className="flex items-center gap-2">

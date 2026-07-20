@@ -235,3 +235,24 @@ SQLite 数据库文件位于 `prisma/dev2.db`，上传文件位于 `public/uploa
 | 颜色定制          | 每个节点可自定义颜色，子节点继承父节点颜色  |
 | 画布操作          | 鼠标拖拽平移，滚轮缩放，自动居中           |
 | 连接线            | 贝塞尔曲线自动连接父子节点                 |
+
+打包方案如下：
+
+使用方式：在项目根目录运行 build-portable.bat，自动生成 dist/ 文件夹，包含全部依赖和便携版 Node.js。
+
+输出目录结构 dist/：
+
+Omni/
+├── node/              # 便携版 Node.js（无需安装）
+├── app/
+│   ├── server.js      # Next.js 服务入口
+│   ├── .next/         # 编译产物
+│   ├── node_modules/  # 运行依赖（仅必须的）
+│   ├── prisma/        # 数据库文件 + Schema
+│   └── public/        # 静态资源
+└── start.bat          # 一键启动
+使用方法：
+
+将 dist/ 整个文件夹复制到任意 Windows 电脑
+运行 start.bat
+浏览器打开 http://localhost:3000

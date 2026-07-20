@@ -6,6 +6,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import Underline from "@tiptap/extension-underline";
+import { TableKit } from "@tiptap/extension-table";
 import { useEffect, useCallback } from "react";
 import {
   BoldOutlined,
@@ -19,9 +20,10 @@ import {
   PictureOutlined,
   UndoOutlined,
   RedoOutlined,
+  TableOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 
-// 工具栏按钮组件
 function Tb({ active, onClick, children, title }: {
   active?: boolean; onClick: () => void; children: React.ReactNode; title: string;
 }) {
@@ -43,17 +45,17 @@ function Tb({ active, onClick, children, title }: {
   );
 }
 
-// 工具栏分隔符
 function Sep() {
   return <div style={{ width: 1, height: 20, background: "#e8e8e8", margin: "0 4px", flexShrink: 0 }} />;
 }
 
-/**
- * Tiptap 富文本编辑器
- *
- * 包含完整的格式化工具栏（加粗/斜体/删除线/下划线/标题/列表/引用/代码块/链接/图片）
- * 以及撤销/重做。paste 处理仅对纯文本进行转义插入，HTML 粘贴由 ProseMirror 默认处理。
- */
+const tableBtnStyle: React.CSSProperties = {
+  width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center",
+  border: "none", borderRadius: 4, cursor: "pointer", fontSize: 11, fontWeight: 600,
+  background: "transparent", color: "#595959",
+  fontFamily: "monospace",
+};
+
 export default function TipTapEditor({
   content,
   onChange,
@@ -70,14 +72,28 @@ export default function TipTapEditor({
       Link.configure({ openOnClick: false }),
       Image,
       Underline,
+      TableKit.configure({ table: { resizable: true } }),
     ],
     content,
     editorProps: {
       attributes: {
         class: "p-3 text-sm",
       },
-      // 纯文本粘贴时转义换行符为 <br> 以保留换行（防止 HTML 序列化后丢失）
       handlePaste: (view, event) => {
+        const items = event.clipboardData?.items;
+        if (items) {
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.type.startsWith("image/")) {
+              const file = item.getAsFile();
+              if (file) {
+                event.preventDefault();
+                uploadImage(file, editor);
+                return true;
+              }
+            }
+          }
+        }
         const text = event.clipboardData?.getData("text/plain");
         const html = event.clipboardData?.getData("text/html");
         if (text && !html) {
@@ -93,7 +109,6 @@ export default function TipTapEditor({
     },
   });
 
-  // 外部 content 变化时同步到编辑器
   useEffect(() => {
     if (!content) return;
     if (editor && editor.getHTML() !== content) {
@@ -117,11 +132,29 @@ export default function TipTapEditor({
     if (url) editor.chain().focus().setImage({ src: url }).run();
   }, [editor]);
 
+  const uploadImage = async (file: File, ed: typeof editor) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("nodeId", "");
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        ed?.chain().focus().setImage({ src: data.filePath }).run();
+      }
+    } catch {}
+  };
+
+  const insertTable = useCallback(() => {
+    editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+  }, [editor]);
+
   if (!editor) return null;
+
+  const inTable = editor.isActive("table");
 
   return (
     <div className="border border-gray-200 rounded-md flex flex-col min-h-0 flex-1">
-      {/* 工具栏 */}
       <div className="flex items-center gap-0.5 p-1 border-b border-gray-200 bg-white flex-wrap shrink-0">
         <Tb onClick={() => editor.chain().focus().undo().run()} title="撤销"><UndoOutlined /></Tb>
         <Tb onClick={() => editor.chain().focus().redo().run()} title="重做"><RedoOutlined /></Tb>
@@ -158,8 +191,29 @@ export default function TipTapEditor({
 
         <Tb active={editor.isActive("link")} onClick={addLink} title="链接"><LinkOutlined /></Tb>
         <Tb onClick={addImage} title="图片"><PictureOutlined /></Tb>
+
+        <Sep />
+
+        <Tb active={inTable} onClick={insertTable} title="插入表格"><TableOutlined /></Tb>
+
+        {inTable && (
+          <>
+            <Sep />
+            <button onClick={() => editor.chain().focus().addColumnBefore().run()} title="左侧插入列" style={tableBtnStyle}>|◀</button>
+            <button onClick={() => editor.chain().focus().addColumnAfter().run()} title="右侧插入列" style={tableBtnStyle}>▶|</button>
+            <button onClick={() => editor.chain().focus().addRowBefore().run()} title="上方插入行" style={tableBtnStyle}>▲―</button>
+            <button onClick={() => editor.chain().focus().addRowAfter().run()} title="下方插入行" style={tableBtnStyle}>▼―</button>
+            <Sep />
+            <button onClick={() => editor.chain().focus().deleteColumn().run()} title="删除列" style={tableBtnStyle}><DeleteOutlined /></button>
+            <button onClick={() => editor.chain().focus().deleteRow().run()} title="删除行" style={tableBtnStyle}>☰✕</button>
+            <button onClick={() => editor.chain().focus().mergeCells().run()} title="合并单元格" style={tableBtnStyle}>⊕</button>
+            <button onClick={() => editor.chain().focus().splitCell().run()} title="拆分单元格" style={tableBtnStyle}>⊘</button>
+            <Sep />
+            <button onClick={() => editor.chain().focus().toggleHeaderRow().run()} title="切换表头行" style={{ ...tableBtnStyle, color: editor.isActive("table") || editor.isActive("tableHeader") ? "#1677ff" : undefined }}>H</button>
+            <button onClick={() => editor.chain().focus().deleteTable().run()} title="删除表格" style={tableBtnStyle}>✕</button>
+          </>
+        )}
       </div>
-      {/* 编辑器内容区域（带滚动） */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <EditorContent editor={editor} />
       </div>
